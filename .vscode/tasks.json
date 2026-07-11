@@ -1,0 +1,89 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Kill Server Ports",
+      "type": "shell",
+      "command": "$ports = 5187,7183; $pids = Get-NetTCPConnection -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Listen' -and $_.LocalPort -in $ports } | Select-Object -ExpandProperty OwningProcess -Unique; if ($pids) { $pids | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Server",
+      "type": "shell",
+      "command": "$ports = 5187,7183; $pids = Get-NetTCPConnection -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Listen' -and $_.LocalPort -in $ports } | Select-Object -ExpandProperty OwningProcess -Unique; if ($pids) { $pids | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }; dotnet run --project EmployeeManagementSystem2.Server/EmployeeManagementSystem2.Server.csproj",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Building",
+          "endsPattern": "Now listening on"
+        }
+      }
+    },
+    {
+      "label": "Run Client",
+      "type": "shell",
+      "command": "npm run dev -- --open",
+      "options": {
+        "cwd": "${workspaceFolder}/employeemanagementsystem2.client"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE",
+          "endsPattern": "Local"
+        }
+      }
+    },
+    {
+      "label": "Open Client (Auto Port)",
+      "type": "shell",
+      "command": "$clientPath = [regex]::Escape((Resolve-Path '${workspaceFolder}/employeemanagementsystem2.client').Path); $vitePids = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -match 'vite' -and $_.CommandLine -match $clientPath } | Select-Object -ExpandProperty ProcessId; $port = $null; if ($vitePids) { $ports = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -in $vitePids } | Select-Object -ExpandProperty LocalPort -Unique; if ($ports -contains 56883) { $port = 56883 } else { $port = $ports | Sort-Object -Descending | Select-Object -First 1 } }; if (-not $port) { $port = 56883 }; Write-Output ('OPENING:https://localhost:' + $port + '/'); Start-Process ('https://localhost:' + $port + '/')",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Client + Open Browser",
+      "dependsOn": [
+        "Run Client",
+        "Open Client (Auto Port)"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Prepare Debug Full Stack",
+      "dependsOn": [
+        "Kill Server Ports",
+        "Run Client + Open Browser"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Client + Server",
+      "dependsOn": [
+        "Run Client + Open Browser",
+        "Run Server"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

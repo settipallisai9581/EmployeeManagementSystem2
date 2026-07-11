@@ -1,0 +1,48 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Full Stack (One Click)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/EmployeeManagementSystem2.Server/bin/Debug/net8.0/EmployeeManagementSystem2.Server.dll",
+      "cwd": "${workspaceFolder}/EmployeeManagementSystem2.Server",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+      },
+      "preLaunchTask": "Prepare Debug Full Stack"
+    },
+    {
+      "name": "Server (.NET)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/EmployeeManagementSystem2.Server/bin/Debug/net8.0/EmployeeManagementSystem2.Server.dll",
+      "cwd": "${workspaceFolder}/EmployeeManagementSystem2.Server",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+      },
+      "preLaunchTask": "Kill Server Ports"
+    },
+    {
+      "name": "Client (Vite)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev -- --open",
+      "cwd": "${workspaceFolder}/employeemanagementsystem2.client"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Client + Server",
+      "configurations": [
+        "Server (.NET)",
+        "Client (Vite)"
+      ],
+      "stopAll": true
+    }
+  ]
+}
