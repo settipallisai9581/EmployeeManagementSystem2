@@ -1,12 +1,27 @@
 using System.Text;
 using EmployeeManagementSystem2.Server.Data;
+using EmployeeManagementSystem2.Server.Middleware;
 using EmployeeManagementSystem2.Server.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using NLog;
+using NLog.Web;
+
+var startupLogger = LogManager.Setup().LoadConfigurationFromFile("NLog.config").GetCurrentClassLogger();
+startupLogger.Info("Server bootstrap started.");
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Host.UseNLog();
+
+var hasConfiguredHttpsEndpoint =
+    !string.IsNullOrWhiteSpace(builder.Configuration["ASPNETCORE_HTTPS_PORT"]) ||
+    (builder.Configuration["ASPNETCORE_URLS"]?
+        .Split(';', StringSplitOptions.RemoveEmptyEntries)
+        .Any(url => url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) ?? false);
 
 var sqlConnection =
     builder.Configuration.GetConnectionString("DefaultConnection")
@@ -103,6 +118,10 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.Lifetime.ApplicationStarted.Register(() => app.Logger.LogInformation("Application started and ready to receive requests."));
+app.Lifetime.ApplicationStopping.Register(() => app.Logger.LogInformation("Application stopping."));
+app.Lifetime.ApplicationStopped.Register(() => app.Logger.LogInformation("Application stopped."));
+
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -118,9 +137,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (hasConfiguredHttpsEndpoint)
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("AllowAll");
+
+app.UseMiddleware<ApiRequestLoggingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -130,3 +154,5 @@ app.MapControllers();
 app.MapFallbackToFile("/index.html");
 
 app.Run();
+
+LogManager.Shutdown();

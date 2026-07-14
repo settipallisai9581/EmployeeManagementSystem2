@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { InternalAxiosRequestConfig } from 'axios';
 import type {
   Employee,
   CreateEmployeeRequest,
@@ -9,6 +10,7 @@ import type {
   RegisterRequest,
   AuthResponse,
 } from '../types';
+import { clientLogger } from './logger';
 
 const api = axios.create({
   baseURL: '/api',
@@ -36,12 +38,73 @@ const ensureArrayResponse = <T>(data: unknown, resourceName: string): T[] => {
 };
 
 api.interceptors.request.use((config) => {
+  const requestConfig = config as InternalAxiosRequestConfig & {
+    metadata?: { startedAt: number };
+  };
+
+  requestConfig.metadata = { startedAt: Date.now() };
+
   const token = localStorage.getItem('token');
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    requestConfig.headers.Authorization = `Bearer ${token}`;
   }
-  return config;
+
+  const url = requestConfig.url ?? '';
+  if (!url.includes('/logs/client')) {
+    clientLogger.info('API request started', {
+      method: requestConfig.method?.toUpperCase(),
+      url,
+    });
+  }
+
+  return requestConfig;
 });
+
+api.interceptors.response.use(
+  (response) => {
+    const requestConfig = response.config as InternalAxiosRequestConfig & {
+      metadata?: { startedAt: number };
+    };
+
+    const durationMs = requestConfig.metadata?.startedAt
+      ? Date.now() - requestConfig.metadata.startedAt
+      : undefined;
+
+    const url = requestConfig.url ?? '';
+    if (!url.includes('/logs/client')) {
+      clientLogger.info('API request completed', {
+        method: requestConfig.method?.toUpperCase(),
+        url,
+        statusCode: response.status,
+        durationMs,
+      });
+    }
+
+    return response;
+  },
+  (error) => {
+    const requestConfig = (error.config ?? {}) as InternalAxiosRequestConfig & {
+      metadata?: { startedAt: number };
+    };
+
+    const durationMs = requestConfig.metadata?.startedAt
+      ? Date.now() - requestConfig.metadata.startedAt
+      : undefined;
+
+    const url = requestConfig.url ?? '';
+    if (!url.includes('/logs/client')) {
+      clientLogger.error('API request failed', {
+        method: requestConfig.method?.toUpperCase(),
+        url,
+        statusCode: error.response?.status,
+        durationMs,
+        errorMessage: error.message,
+      });
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {

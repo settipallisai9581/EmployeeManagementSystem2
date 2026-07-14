@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -8,11 +9,16 @@ import Dashboard from './pages/Dashboard';
 import EmployeeList from './pages/EmployeeList';
 import EmployeeDetail from './pages/EmployeeDetail';
 import EmployeeForm from './pages/EmployeeForm';
+import { clientLogger } from './services/logger';
 import './App.css';
 
 function AppLayout() {
     const location = useLocation();
     const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+
+    useEffect(() => {
+        clientLogger.info('Route changed', { path: location.pathname });
+    }, [location.pathname]);
 
     return (
         <div className="app">
