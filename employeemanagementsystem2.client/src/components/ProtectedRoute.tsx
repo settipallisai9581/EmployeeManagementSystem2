@@ -6,10 +6,10 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, sessionTimedOut } = useAuth();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={sessionTimedOut ? '/session-timeout' : '/login'} replace />;
   }
 
   return <>{children}</>;

@@ -102,6 +102,10 @@ api.interceptors.response.use(
       });
     }
 
+    if (error.response?.status === 401 && localStorage.getItem('token')) {
+      window.dispatchEvent(new Event('auth:session-timeout'));
+    }
+
     return Promise.reject(error);
   }
 );

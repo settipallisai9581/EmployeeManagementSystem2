@@ -1,0 +1,73 @@
+.session-timeout-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #eef5ff 0%, #f9fcff 100%);
+}
+
+.session-timeout-card {
+  width: 100%;
+  max-width: 680px;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 40px 28px;
+  text-align: center;
+  box-shadow: 0 18px 45px rgba(25, 35, 90, 0.22);
+}
+
+.session-timeout-card h1 {
+  margin: 0;
+  font-size: 32px;
+  color: #2f3b85;
+}
+
+.session-timeout-card p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 17px;
+}
+
+.session-timeout-login-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+  min-width: 150px;
+  padding: 14px 30px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #5b6fd8 0%, #8b5fb8 100%);
+  color: #ffffff !important;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.session-timeout-login-button:visited,
+.session-timeout-login-button:active,
+.session-timeout-login-button:focus {
+  color: #ffffff !important;
+}
+
+.session-timeout-login-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(91, 111, 216, 0.35);
+}
+
+@media (max-width: 640px) {
+  .session-timeout-card {
+    padding: 32px 20px;
+  }
+
+  .session-timeout-card h1 {
+    font-size: 28px;
+  }
+}

@@ -9,12 +9,16 @@ import Dashboard from './pages/Dashboard';
 import EmployeeList from './pages/EmployeeList';
 import EmployeeDetail from './pages/EmployeeDetail';
 import EmployeeForm from './pages/EmployeeForm';
+import SessionTimeout from './pages/SessionTimeout';
 import { clientLogger } from './services/logger';
 import './App.css';
 
 function AppLayout() {
     const location = useLocation();
-    const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+    const isAuthPage =
+        location.pathname === '/login' ||
+        location.pathname === '/register' ||
+        location.pathname === '/session-timeout';
 
     useEffect(() => {
         clientLogger.info('Route changed', { path: location.pathname });
@@ -28,6 +32,7 @@ function AppLayout() {
                     <Route path="/" element={<Navigate to="/login" replace />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/session-timeout" element={<SessionTimeout />} />
                     <Route
                         path="/dashboard"
                         element={
