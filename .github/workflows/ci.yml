@@ -46,12 +46,27 @@ jobs:
         ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
         ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
         ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+        ARTIFACTORY_API_KEY: ${{ secrets.ARTIFACTORY_API_KEY }}
       run: |
+        echo "Checking Artifactory secrets availability..."
         if [ -z "$ARTIFACTORY_URL" ]; then
-          echo "ARTIFACTORY_URL secret is not set. Skipping adding Artifactory source.";
+          echo "ERROR: ARTIFACTORY_URL secret is not set. Add it under Repository Settings → Secrets and Variables → Actions.";
           exit 1;
         fi
-        dotnet nuget add source "$ARTIFACTORY_URL" --name Artifactory --username "$ARTIFACTORY_USER" --password "$ARTIFACTORY_PASSWORD" --store-password-in-clear-text --configfile nuget.ci.config
+        if [ -z "$ARTIFACTORY_USER" ]; then
+          echo "Warning: ARTIFACTORY_USER is empty — some feeds accept only an API key. Proceeding if ARTIFACTORY_API_KEY is set.";
+        fi
+        if [ -z "$ARTIFACTORY_PASSWORD" ] && [ -z "$ARTIFACTORY_API_KEY" ]; then
+          echo "ERROR: Neither ARTIFACTORY_PASSWORD nor ARTIFACTORY_API_KEY is set. Provide one of them as a secret.";
+          exit 1;
+        fi
+        echo "Secrets present: ARTIFACTORY_URL=$( [ -n \"$ARTIFACTORY_URL\" ] && echo true || echo false ), ARTIFACTORY_USER=$( [ -n \"$ARTIFACTORY_USER\" ] && echo true || echo false ), ARTIFACTORY_PASSWORD=$( [ -n \"$ARTIFACTORY_PASSWORD\" ] && echo true || echo false ), ARTIFACTORY_API_KEY=$( [ -n \"$ARTIFACTORY_API_KEY\" ] && echo true || echo false )"
+        # Prefer API key if provided
+        AUTH_PASS="$ARTIFACTORY_PASSWORD"
+        if [ -n "$ARTIFACTORY_API_KEY" ]; then
+          AUTH_PASS="$ARTIFACTORY_API_KEY"
+        fi
+        dotnet nuget add source "$ARTIFACTORY_URL" --name Artifactory --username "$ARTIFACTORY_USER" --password "$AUTH_PASS" --store-password-in-clear-text --configfile nuget.ci.config
 
     - name: Restore NuGet packages (server and client)
       run: |
