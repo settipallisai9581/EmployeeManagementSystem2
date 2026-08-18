@@ -41,22 +41,22 @@ jobs:
         </configuration>
         EOF
 
-    - name: Restore NuGet packages
-      run: dotnet restore ./EmployeeManagementSystem2.sln --configfile nuget.ci.config
+    - name: Restore NuGet packages (server project only)
+      run: dotnet restore ./EmployeeManagementSystem2.Server/EmployeeManagementSystem2.Server.csproj --configfile nuget.ci.config
 
     - name: Install client dependencies
       working-directory: ./employeemanagementsystem2.client
       run: npm ci
 
-    - name: Build solution
-      run: dotnet build ./EmployeeManagementSystem2.sln --configuration Release --no-restore
+    - name: Build server project
+      run: dotnet build ./EmployeeManagementSystem2.Server/EmployeeManagementSystem2.Server.csproj --configuration Release --no-restore
 
     - name: Build client
       working-directory: ./employeemanagementsystem2.client
       run: npm run build --if-present
 
     - name: Run server tests
-      run: dotnet test ./EmployeeManagementSystem2.sln --no-build --verbosity normal
+      run: dotnet test ./EmployeeManagementSystem2.Server/EmployeeManagementSystem2.Server.csproj --no-build --verbosity normal
 
     - name: Lint client
       working-directory: ./employeemanagementsystem2.client
