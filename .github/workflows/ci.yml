@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        dotnet-version: [ '7.0.x' ]
+        node-version: [ '18.x' ]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ matrix.dotnet-version }}
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Restore NuGet packages
+      run: dotnet restore ./EmployeeManagementSystem2.sln
+
+    - name: Install client dependencies
+      working-directory: ./employeemanagementsystem2.client
+      run: npm ci
+
+    - name: Build solution
+      run: dotnet build ./EmployeeManagementSystem2.sln --configuration Release --no-restore
+
+    - name: Build client
+      working-directory: ./employeemanagementsystem2.client
+      run: npm run build --if-present
+
+    - name: Run server tests
+      run: dotnet test ./EmployeeManagementSystem2.sln --no-build --verbosity normal
+
+    - name: Lint client
+      working-directory: ./employeemanagementsystem2.client
+      run: |
+        if (Test-Path package.json) {
+          npm run lint --if-present
+        } else {
+          Write-Host "No package.json found, skipping client lint"
+        }
