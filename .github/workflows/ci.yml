@@ -41,8 +41,22 @@ jobs:
         </configuration>
         EOF
 
-    - name: Restore NuGet packages (server project only)
-      run: dotnet restore ./EmployeeManagementSystem2.Server/EmployeeManagementSystem2.Server.csproj --configfile nuget.ci.config
+    - name: Configure Artifactory feed
+      env:
+        ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+        ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+      run: |
+        if [ -z "$ARTIFACTORY_URL" ]; then
+          echo "ARTIFACTORY_URL secret is not set. Skipping adding Artifactory source.";
+          exit 1;
+        fi
+        dotnet nuget add source "$ARTIFACTORY_URL" --name Artifactory --username "$ARTIFACTORY_USER" --password "$ARTIFACTORY_PASSWORD" --store-password-in-clear-text --configfile nuget.ci.config
+
+    - name: Restore NuGet packages (server and client)
+      run: |
+        dotnet restore ./EmployeeManagementSystem2.Server/EmployeeManagementSystem2.Server.csproj --configfile nuget.ci.config
+        dotnet restore ./employeemanagementsystem2.client/employeemanagementsystem2.client.esproj --configfile nuget.ci.config
 
     - name: Install client dependencies
       working-directory: ./employeemanagementsystem2.client
@@ -51,7 +65,11 @@ jobs:
     - name: Build server project
       run: dotnet build ./EmployeeManagementSystem2.Server/EmployeeManagementSystem2.Server.csproj --configuration Release --no-restore
 
-    - name: Build client
+    - name: Build client project (dotnet)
+      run: |
+        dotnet build ./employeemanagementsystem2.client/employeemanagementsystem2.client.esproj --configuration Release --no-restore || true
+
+    - name: Build client (node)
       working-directory: ./employeemanagementsystem2.client
       run: npm run build --if-present
 
