@@ -29,8 +29,21 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
+    - name: Create CI nuget.config
+      shell: pwsh
+      run: |
+        $nuget = @'
+        <?xml version="1.0" encoding="utf-8"?>
+        <configuration>
+          <packageSources>
+            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+          </packageSources>
+        </configuration>
+        '@
+        Set-Content -Path nuget.ci.config -Value $nuget -Encoding UTF8
+
     - name: Restore NuGet packages
-      run: dotnet restore ./EmployeeManagementSystem2.sln
+      run: dotnet restore ./EmployeeManagementSystem2.sln --configfile nuget.ci.config
 
     - name: Install client dependencies
       working-directory: ./employeemanagementsystem2.client
