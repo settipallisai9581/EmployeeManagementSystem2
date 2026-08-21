@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         dotnet-version: [ '8.0.x' ]
-        node-version: [ '18.x' ]
+        node-version: [ '20.x' ]
 
     steps:
     - name: Checkout
@@ -103,7 +103,7 @@ jobs:
 
     - name: Build client project (dotnet)
       run: |
-        dotnet build ./employeemanagementsystem2.client/employeemanagementsystem2.client.esproj --configuration Release --no-restore || true
+        dotnet build ./employeemanagementsystem2.client/employeemanagementsystem2.client.esproj --configuration Release --no-restore
 
     - name: Build client (node)
       working-directory: ./employeemanagementsystem2.client
