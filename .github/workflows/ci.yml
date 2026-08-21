@@ -44,30 +44,35 @@ jobs:
     - name: Configure Artifactory feed
       shell: bash
       env:
-        ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-        ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-        ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-        DEMO_API_KEY: ${{ secrets.DEMO_API_KEY }}
+        ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL || vars.ARTIFACTORY_URL }}
+        ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER || vars.ARTIFACTORY_USER }}
+        ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD || vars.ARTIFACTORY_PASSWORD }}
+        DEMO_API_KEY: ${{ secrets.DEMO_API_KEY || vars.DEMO_API_KEY }}
         APP_ENVIRONMENT: ${{ vars.APP_ENVIRONMENT }}
       run: |
         echo "Checking Artifactory secrets and variables availability..."
+        echo "APP_ENVIRONMENT status: $( [ -n \"$APP_ENVIRONMENT\" ] && echo set || echo not-set )"
+        echo "ARTIFACTORY_URL status: $( [ -n \"$ARTIFACTORY_URL\" ] && echo set || echo not-set )"
+        echo "ARTIFACTORY_USER status: $( [ -n \"$ARTIFACTORY_USER\" ] && echo set || echo not-set )"
+        echo "ARTIFACTORY_PASSWORD status: $( [ -n \"$ARTIFACTORY_PASSWORD\" ] && echo set || echo not-set )"
+        echo "DEMO_API_KEY status: $( [ -n \"$DEMO_API_KEY\" ] && echo set || echo not-set )"
+
         if [ -z "$ARTIFACTORY_URL" ]; then
-          echo "ERROR: ARTIFACTORY_URL secret is not set. Add it under Repository Settings → Secrets and Variables → Actions.";
-          exit 1;
+          echo "No Artifactory URL configured. Skipping Artifactory source and continuing with nuget.org only."
+          exit 0
         fi
-        if [ -z "$ARTIFACTORY_USER" ]; then
-          echo "Warning: ARTIFACTORY_USER is empty — some feeds accept only an API key. Proceeding if DEMO_API_KEY is set.";
+
+        if [ -z "$ARTIFACTORY_USER" ] && [ -z "$ARTIFACTORY_PASSWORD" ] && [ -z "$DEMO_API_KEY" ]; then
+          echo "Artifactory URL is configured, but no credential was found. Skipping Artifactory source and continuing with nuget.org only."
+          exit 0
         fi
-        if [ -z "$ARTIFACTORY_PASSWORD" ] && [ -z "$DEMO_API_KEY" ]; then
-          echo "ERROR: Neither ARTIFACTORY_PASSWORD nor DEMO_API_KEY is set. Provide one of them as a secret.";
-          exit 1;
-        fi
-        echo "Secrets/vars present: ARTIFACTORY_URL=$( [ -n \"$ARTIFACTORY_URL\" ] && echo true || echo false ), ARTIFACTORY_USER=$( [ -n \"$ARTIFACTORY_USER\" ] && echo true || echo false ), ARTIFACTORY_PASSWORD=$( [ -n \"$ARTIFACTORY_PASSWORD\" ] && echo true || echo false ), DEMO_API_KEY=$( [ -n \"$DEMO_API_KEY\" ] && echo true || echo false ), APP_ENVIRONMENT=$( [ -n \"$APP_ENVIRONMENT\" ] && echo true || echo false )"
-        # Prefer API key if provided
+
         AUTH_PASS="$ARTIFACTORY_PASSWORD"
-        if [ -n "$DEMO_API_KEY" ]; then
+        if [ -z "$AUTH_PASS" ] && [ -n "$DEMO_API_KEY" ]; then
           AUTH_PASS="$DEMO_API_KEY"
         fi
+
+        echo "Adding Artifactory feed to nuget config..."
         dotnet nuget add source "$ARTIFACTORY_URL" --name Artifactory --username "$ARTIFACTORY_USER" --password "$AUTH_PASS" --store-password-in-clear-text --configfile nuget.ci.config
 
     - name: Restore NuGet packages (server and client)
