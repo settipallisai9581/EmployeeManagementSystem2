@@ -90,9 +90,30 @@ jobs:
         echo "CI NuGet config created. nuget.org is always enabled. Artifactory is added only when ARTIFACTORY_URL is set and credentials are available."
 
     - name: Restore NuGet packages (server and client)
+      shell: bash
       run: |
-        dotnet restore ./EmployeeManagementSystem2.Server/EmployeeManagementSystem2.Server.csproj --configfile nuget.ci.config
-        dotnet restore ./employeemanagementsystem2.client/employeemanagementsystem2.client.esproj --configfile nuget.ci.config
+        set -e
+        retry() {
+          local n=1
+          local max=3
+          local delay=5
+          until [ $n -ge $max ]
+          do
+            "$@" && break || {
+              echo "Command failed: $@. Attempt $n/$max. Retrying in $delay seconds...";
+              sleep $delay;
+              n=$((n+1));
+              delay=$((delay*2));
+            }
+          done
+          if [ $n -ge $max ]; then
+            echo "Command '$*' failed after $max attempts.";
+            return 1
+          fi
+        }
+
+        retry dotnet restore ./EmployeeManagementSystem2.Server/EmployeeManagementSystem2.Server.csproj --configfile nuget.ci.config
+        retry dotnet restore ./employeemanagementsystem2.client/employeemanagementsystem2.client.esproj --configfile nuget.ci.config || true
 
     - name: Install client dependencies
       working-directory: ./employeemanagementsystem2.client

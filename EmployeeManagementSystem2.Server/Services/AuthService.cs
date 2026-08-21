@@ -60,7 +60,7 @@ public class AuthService : IAuthService
 
         try
         {
-            var result = _context.AuthRegisterSpResults
+            var result = await _context.AuthRegisterSpResults
                 .FromSqlRaw(
                     "EXEC dbo.usp_Auth_RegisterUser @Username, @Email, @PasswordHash, @FirstName, @LastName, @DepartmentId, @RoleId",
                     new SqlParameter("@Username", request.Username),
@@ -71,8 +71,7 @@ public class AuthService : IAuthService
                     new SqlParameter("@DepartmentId", request.DepartmentId),
                     new SqlParameter("@RoleId", request.RoleId))
                 .AsNoTracking()
-                .AsEnumerable()
-                .FirstOrDefault();
+                .FirstOrDefaultAsync(cancellationToken);
 
             if (result == null)
             {
