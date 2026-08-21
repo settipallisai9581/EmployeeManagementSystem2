@@ -1,27 +1,19 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { User, LoginRequest, RegisterRequest } from '../types';
 import { authApi } from '../services/api';
 import { clientLogger } from '../services/logger';
-
-const SESSION_TIMEOUT_MS = 2 * 60 * 1000;
-const SESSION_TIMEOUT_FLAG_KEY = 'sessionTimedOut';
-const LAST_ACTIVITY_AT_KEY = 'lastActivityAt';
-const SESSION_TIMEOUT_EVENT = 'auth:session-timeout';
-
-interface AuthContextType {
-  user: User | null;
-  login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
-  logout: () => void;
-  isAuthenticated: boolean;
-  sessionTimedOut: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext } from './auth-context';
+import {
+  LAST_ACTIVITY_AT_KEY,
+  SESSION_TIMEOUT_EVENT,
+  SESSION_TIMEOUT_FLAG_KEY,
+  SESSION_TIMEOUT_MS,
+  restoreUserFromStorage,
+} from './auth-storage';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(restoreUserFromStorage);
   const [sessionTimedOut, setSessionTimedOut] = useState(
     () => localStorage.getItem(SESSION_TIMEOUT_FLAG_KEY) === 'true'
   );
@@ -86,40 +78,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [clearSessionTimer, triggerSessionTimeout]);
 
   useEffect(() => {
-    clientLogger.info('Auth context initialization started');
-
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
-    if (token && userStr) {
-      try {
-        const lastActivityAt = Number(localStorage.getItem(LAST_ACTIVITY_AT_KEY) ?? Date.now());
-        if (Date.now() - lastActivityAt >= SESSION_TIMEOUT_MS) {
-          triggerSessionTimeout();
-          clientLogger.warn('Restored session was already timed out');
-        } else {
-          markSessionActivity();
-          clearSessionTimedOutState();
-          setUser(JSON.parse(userStr));
-          clientLogger.info('Auth session restored from local storage');
-        }
-      } catch {
-        clearAuthStorage();
-        localStorage.removeItem(LAST_ACTIVITY_AT_KEY);
-        localStorage.removeItem(SESSION_TIMEOUT_FLAG_KEY);
-        clientLogger.warn('Auth session restore failed; storage values were cleared');
-      }
-    }
-
-    clientLogger.info('Auth context initialization completed');
-  }, [clearAuthStorage, clearSessionTimedOutState, markSessionActivity, triggerSessionTimeout]);
-
-  useEffect(() => {
     if (!user) {
       clearSessionTimer();
       return;
     }
 
-    scheduleSessionTimeout();
+    const initialScheduleId = window.setTimeout(() => {
+      scheduleSessionTimeout();
+    }, 0);
 
     const onActivity = () => {
       const now = Date.now();
@@ -145,6 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => {
+      window.clearTimeout(initialScheduleId);
       activityEvents.forEach((eventName) => {
         window.removeEventListener(eventName, onActivity);
       });
@@ -221,12 +188,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };

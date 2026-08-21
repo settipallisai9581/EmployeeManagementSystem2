@@ -30,21 +30,31 @@ const EmployeeList = () => {
     };
   }, [employees]);
 
-  const loadEmployees = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const data = await employeeApi.getAll();
-      setEmployees(data);
-    } catch {
-      setError('Failed to load employees');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadEmployees();
+    let cancelled = false;
+
+    const loadEmployees = async () => {
+      try {
+        const data = await employeeApi.getAll();
+        if (!cancelled) {
+          setEmployees(data);
+        }
+      } catch {
+        if (!cancelled) {
+          setError('Failed to load employees');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadEmployees();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -53,8 +63,15 @@ const EmployeeList = () => {
       return;
     }
 
-    setSuccessMessage(state.successMessage);
-    navigate(location.pathname + location.search, { replace: true, state: null });
+    const message = state.successMessage;
+    const timeoutId = window.setTimeout(() => {
+      setSuccessMessage(message);
+      navigate(location.pathname + location.search, { replace: true, state: null });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [location.pathname, location.search, location.state, navigate]);
 
   useEffect(() => {

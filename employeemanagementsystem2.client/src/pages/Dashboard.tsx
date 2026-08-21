@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { employeeApi, departmentApi, roleApi } from '../services/api';
 import type { Employee, Department } from '../types';
@@ -29,52 +29,65 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [employees, depts, roles] = await Promise.all([
-        employeeApi.getAll(),
-        departmentApi.getAll(),
-        roleApi.getAll(),
-      ]);
-
-      const activeCount = employees.filter((emp) => emp.isActive).length;
-      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-      const recentHiresCount = employees.filter((emp) => {
-        const hireDate = new Date(emp.hireDate).getTime();
-        return hireDate >= thirtyDaysAgo;
-      }).length;
-
-      const salaries = employees.filter((emp) => emp.salary).map((emp) => emp.salary || 0);
-      const avgSalary = salaries.length > 0
-        ? salaries.reduce((sum, salary) => sum + salary, 0) / salaries.length
-        : 0;
-
-      setStats({
-        totalEmployees: employees.length,
-        activeEmployees: activeCount,
-        inactiveEmployees: employees.length - activeCount,
-        totalDepartments: depts.length,
-        totalRoles: roles.length,
-        recentHires: recentHiresCount,
-        avgSalary,
-      });
-
-      const sortedEmployees = [...employees]
-        .sort((a, b) => new Date(b.hireDate).getTime() - new Date(a.hireDate).getTime())
-        .slice(0, 5);
-      setRecentEmployees(sortedEmployees);
-      setDepartments(depts);
-    } catch {
-      setError('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
+    let cancelled = false;
+
+    const loadDashboardData = async () => {
+      try {
+        const [employees, depts, roles] = await Promise.all([
+          employeeApi.getAll(),
+          departmentApi.getAll(),
+          roleApi.getAll(),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        const activeCount = employees.filter((emp) => emp.isActive).length;
+        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+        const recentHiresCount = employees.filter((emp) => {
+          const hireDate = new Date(emp.hireDate).getTime();
+          return hireDate >= thirtyDaysAgo;
+        }).length;
+
+        const salaries = employees.filter((emp) => emp.salary).map((emp) => emp.salary || 0);
+        const avgSalary = salaries.length > 0
+          ? salaries.reduce((sum, salary) => sum + salary, 0) / salaries.length
+          : 0;
+
+        setStats({
+          totalEmployees: employees.length,
+          activeEmployees: activeCount,
+          inactiveEmployees: employees.length - activeCount,
+          totalDepartments: depts.length,
+          totalRoles: roles.length,
+          recentHires: recentHiresCount,
+          avgSalary,
+        });
+
+        const sortedEmployees = [...employees]
+          .sort((a, b) => new Date(b.hireDate).getTime() - new Date(a.hireDate).getTime())
+          .slice(0, 5);
+        setRecentEmployees(sortedEmployees);
+        setDepartments(depts);
+      } catch {
+        if (!cancelled) {
+          setError('Failed to load dashboard data');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (loading) {
     return <div className="loading">Loading dashboard...</div>;
