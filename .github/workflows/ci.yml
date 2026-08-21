@@ -37,6 +37,8 @@ jobs:
         ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD || vars.ARTIFACTORY_PASSWORD }}
         DEMO_API_KEY: ${{ secrets.DEMO_API_KEY || vars.DEMO_API_KEY }}
       run: |
+        AUTH_PASS="${ARTIFACTORY_PASSWORD:-$DEMO_API_KEY}"
+
         cat > nuget.ci.config <<EOF
         <?xml version="1.0" encoding="utf-8"?>
         <configuration>
@@ -46,38 +48,46 @@ jobs:
         EOF
 
         if [ -n "$ARTIFACTORY_URL" ]; then
-          echo "        <add key=\"Artifactory\" value=\"$ARTIFACTORY_URL\" />" >> nuget.ci.config
+          echo "    <add key=\"Artifactory\" value=\"$ARTIFACTORY_URL\" />" >> nuget.ci.config
         fi
 
         cat >> nuget.ci.config <<EOF
           </packageSources>
+        EOF
+
+        if [ -n "$ARTIFACTORY_URL" ] && { [ -n "$ARTIFACTORY_USER" ] || [ -n "$AUTH_PASS" ]; }; then
+          USERNAME_LINE=""
+          PASSWORD_LINE=""
+          if [ -n "$ARTIFACTORY_USER" ]; then
+            USERNAME_LINE="      <add key=\"Username\" value=\"$ARTIFACTORY_USER\" />"
+          fi
+          if [ -n "$AUTH_PASS" ]; then
+            PASSWORD_LINE="      <add key=\"ClearTextPassword\" value=\"$AUTH_PASS\" />"
+          fi
+
+          cat >> nuget.ci.config <<EOF
+          <packageSourceCredentials>
+            <Artifactory>
+        EOF
+
+          if [ -n "$USERNAME_LINE" ]; then
+            printf '%s\n' "$USERNAME_LINE" >> nuget.ci.config
+          fi
+          if [ -n "$PASSWORD_LINE" ]; then
+            printf '%s\n' "$PASSWORD_LINE" >> nuget.ci.config
+          fi
+
+          cat >> nuget.ci.config <<EOF
+            </Artifactory>
+          </packageSourceCredentials>
+        EOF
+        fi
+
+        cat >> nuget.ci.config <<EOF
         </configuration>
         EOF
 
-        echo "CI NuGet config created. nuget.org is always enabled. Artifactory is included only when ARTIFACTORY_URL is set."
-
-    - name: Configure Artifactory feed
-      if: ${{ env.ARTIFACTORY_URL != '' }}
-      shell: bash
-      env:
-        ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL || vars.ARTIFACTORY_URL }}
-        ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER || vars.ARTIFACTORY_USER }}
-        ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD || vars.ARTIFACTORY_PASSWORD }}
-        DEMO_API_KEY: ${{ secrets.DEMO_API_KEY || vars.DEMO_API_KEY }}
-      run: |
-        if [ -z "$ARTIFACTORY_URL" ]; then
-          echo "No Artifactory URL configured; skipping feed configuration."
-          exit 0
-        fi
-        AUTH_PASS="$ARTIFACTORY_PASSWORD"
-        if [ -z "$AUTH_PASS" ] && [ -n "$DEMO_API_KEY" ]; then
-          AUTH_PASS="$DEMO_API_KEY"
-        fi
-        if [ -n "$ARTIFACTORY_USER" ] && [ -n "$AUTH_PASS" ]; then
-          dotnet nuget add source "$ARTIFACTORY_URL" --name Artifactory --username "$ARTIFACTORY_USER" --password "$AUTH_PASS" --store-password-in-clear-text --configfile nuget.ci.config
-        else
-          echo "Artifactory URL exists, but no credentials were supplied; skipping source registration."
-        fi
+        echo "CI NuGet config created. nuget.org is always enabled. Artifactory is added only when ARTIFACTORY_URL is set and credentials are available."
 
     - name: Restore NuGet packages (server and client)
       run: |
