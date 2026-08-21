@@ -165,7 +165,7 @@ const Dashboard = () => {
                   </div>
                   <div className="employee-info">
                     <strong>{employee.firstName} {employee.lastName}</strong>
-                    <span>{employee.departmentName} • {employee.roleName}</span>
+                    <span>{employee.departmentName} | {employee.roleName}</span>
                   </div>
                   <div className="employee-date">
                     {new Date(employee.hireDate).toLocaleDateString()}
